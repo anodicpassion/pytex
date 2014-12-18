@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+
+from pytex.bin.alttex import main
+
+main()

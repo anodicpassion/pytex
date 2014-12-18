@@ -1,0 +1,542 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                            Package declaration
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+
+% Package options
+\ProvidesPackage{alttex}[2013/01/13 Custom Package]
+\RequirePackage{verbatim}
+\RequirePackage{fancyvrb}
+\RequirePackage{color}
+\RequirePackage{xparse}
+\DeclareOption{math}\relax
+\ProcessOptions\relax
+
+%\DeclareOption{foo}{
+%  \renewcommand{\familydefault}{\sfdefault}
+%}
+
+%.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                             PiTutor workflow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% piTutor performs many operations under-the-hood before generating the 
+% individualized documents from LaTeX files. Even though the input TeX files are 
+% valid tex, they do not generate the desired output if run directely through 
+% the LaTeX processor.
+%
+% The workflow consists into the following steps
+%
+%   1) Move the necessary files to working directory
+%   2) \alt expansion. Creates many LaTeX files for each section
+%   4) Special commands substitutions (for \multiplechoice, \truefalse, etc)
+%   5) Consolidate multiple files
+%   6) Tex execution
+%   7) Insertion of python code
+%   8) Re-execute TeX until no changes occur
+%   9) Move back outputs to callee's folder
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                    Step 1: Move files to working directory
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% In order to preserve a clean building environment, the default behavior is to 
+% create symlinks of all files and directories in the current working dir to 
+% a subdirectory called ".tmp-piTutor". The contents of this directory are 
+% used to accelerate the building process and can be safely removed.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       Step 2: Alternatives handling
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The alttex preprocessor enables the creation of multiple versions of a 
+% document from a single source. The processor runs the document a certain
+% number of times and then join the results into one or more final documents. 
+% The original goal is to make different versions of an exam from a single 
+% LaTeX source. Other people may find other uses for this package.
+%
+% There are two kinds of variations, which we call `sections` and `versions`. 
+% Different sections create output for different final documents. Within the 
+% same section, all versions are merged together in the final phase of 
+% preparation.
+%
+% Consider the example:
+%
+%-------------------------------------------------------------------------------
+%
+%     How much is $\alt{1 + 1|2 + 1|1 + 2}$?
+%     
+%     \altcond{answer}
+%        {Re: $\alt{1 + 1 = 2|2 + 1 = 3|1 + 2 = 3}$}
+%        {Tip: the answer is a whole number!}
+%
+%-------------------------------------------------------------------------------
+%
+% This simple source creates 6 documents aggregated into two files. The first 
+% file corresponds to the "answer" section, and aggregates the 3 alternative
+% versions asking the result of 1 + 1, 2 + 1 or 1 + 2 respectively. 
+%
+% The second file is the output of the implied "default" section. This file will
+% show the text "Tip: ...", as defined by the third argument of the 
+% \ifsection command.
+%
+% The basic commands are
+%
+% Inline commands:
+%     \alt{a|b|c|...}
+%           Cycle between the options a, b, c, ... at each version of the 
+%           document.
+%
+%     \alt[sec1, sec2]{a|b|c...}
+%           Same as above, but only outputs in the sections specified in the 
+%           argument.
+%
+%     \alt[!sec1, !sec2]{a|b|c...}
+%           Outputs on all sections but "sec1" and "sec2"
+%
+%     \altcond{sec1, sec2}{a|b|c...}{z|w|x...}
+%           If section is sec1 or sec2, cycles between a, b, c, etc, otherwise 
+%           cycles between z, w, x, etc. The ! syntax of the \alt command is
+%           also allowed.
+%
+%     \aline{sec1, sec2, ...}
+%           Inserts a new \\ if in one of the specified sections.
+%
+%     \apar{sec1, sec2, ...}
+%           Inserts a new \par if in one of the specified sections.
+
+\newcommand{\alt}[2][empty]{~||alt:\ {#2}||~}
+\newcommand{\altcond}[3]{if({#1})~show~({#2})~else~({#3})~}
+\newcommand{\aline}[1]{\\}
+\newcommand{\apar}[1]{\par}
+
+%.
+% Command constants:
+%     \secname
+%           Expand to the current section name
+%
+%     \altidx{0 or 1} 
+%           The index for the current version, starting from 0 or 1 (default).
+%           The optional argument can also be "letter", "l", "LETTER", "L", 
+%           "roman", "r", or "R" in order to express the index as a letter 
+%           (in lower or UPPER case) or as a roman numeral.
+%           
+%           The LaTeX parser identifies \altindex0 and \altindex{0} as the same
+%           thing. The former version may look more readable, but \altindex10 
+%           may not work as expected...
+%
+%     \maxversions
+%           Expand to the number of versions in the current job.
+%
+%     \setversions{value}
+%           Define the default number of alternative versions that should be 
+%           created by alttex.
+%
+
+\newcommand{\secname}[0]{<<section name>>}
+\newcommand{\altidx}[1]{<<version index>>}
+\newcommand{\maxversions}[0]{<<maxversions>>}
+\newcommand{\setversions}[1]{}
+
+%.
+% Variables and namespace
+% -----------------------
+%
+% The alttex engine has an interface with Python in order to programatically
+% generate input to be inserted at the LaTeX documents. The most basic command
+% is the \var{name@filters}, which inserts the contents of the given variable
+% into the final TeX document. The user can define many sources of data for 
+% feeding values to these variables: by commands in the LaTeX file, python 
+% programs, external files, etc.
+%
+% For starters, one can define variables inside the TeX document using the 
+% "variables" environment,
+%
+%-------------------------------------------------------------------------------
+%
+%     \begin{variables}
+%       \def fooA = 2
+%       \def fooB = 3
+%       \def fooC = \alt{1|2|3} % a variable with alternatives
+%     \end{variables}
+%
+%-------------------------------------------------------------------------------
+%
+% This will create the variables fooA, and fooB, assigned to the respective 
+% value in the RHS.
+%
+% Newlines and trailing spaces will be simply ignored. Comments are also 
+% ignored, so "\item num = 42 % the answer!" will be expanded
+% to "42" when \var{num} is called and not to "42 % the answer!", or something
+% similar.
+%
+% Variables can be created programatically by executing programs in other languages 
+% rather than LaTeX. This is done by the "namespace" block, which takes an obligatory
+% argument telling the programming language (or its specific variant) in which 
+% the code is written.
+%
+%-------------------------------------------------------------------------------
+%
+%     \begin{namespace}{python}
+%       from random import shuffle
+%       L = [1,2,3]
+%       shuffle(L)
+%       ns.a, ns.b, ns.c = L
+%     \end{namespace}
+%
+%-------------------------------------------------------------------------------
+%
+% The way the variables are imported depends on the programming language. For 
+% python, the code is executed with a "namespace" (and its alias "ns") variable
+% already set up in the globlals() dictionary. All elements assigned as 
+% attributes to this variable will be available to the \var command.
+%
+% Finally, there is the \importscript{language}{file} command. It will run an
+% external file and import its variables similarly as if the source code were 
+% typed into the "namespace" block. 
+%
+
+\newenvironment{variables}{\begingroup}{\endgroup}
+\newenvironment{exec}[1]{\endgraf\comment}{\endcomment}
+\newenvironment{namespace}[1]{\endgraf\comment}{\endcomment}
+\newcommand{\importscript}[2]{}
+\newcommand{\var}[1]{*{#1}*}
+\def\py{\verb}
+
+%
+%  Mathematical expressions
+%
+%  The alttex engine has support to symbolic manipulation of mathematical 
+%  expressions
+
+% Environments:
+%     \begin{alternatives}[section]
+%       \item a
+%       \item b
+%       \else c
+%     \end{alternatives}
+%
+% The document is thus processed and a different .tex file for each section/version 
+% is created
+%
+% Here we define dummies that just print interrogation marks in the position of
+% the alternatives.
+%
+
+% Simple commands and constants
+
+\newenvironment{shuffle}[0]{\begingroup}{\endgroup}
+%\newenvironment{alternatives}[1][]{\begingroup}{\endgroup}
+
+%.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                          Question types
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
+%-------------------------------------------------------------------------------
+%
+%     \begin{multiplechoice}[horizontal]
+%       How much is $2 + 1$?
+%
+%       \begin{choices}
+%         \item $0$
+%         \item $1$
+%         \item $2$
+%         \item\correct $3$
+%       \end{choices}
+%
+%       \feedback{Remember: what is the number one unit after 2?}
+%       \comment{Test if the student is able to perform basic algebraic manipulations.}
+%     \end{multiplechoice}
+%
+%-------------------------------------------------------------------------------
+
+
+
+% Common definitions
+\definecolor{gray}{gray}{.5}
+\definecolor{emph}{rgb}{.1, .3, 1}
+\def\answer@alttex#1{\endgraf\noindent\textbf{Answer:}\ }
+\def\feedback@alttex#1{\endgraf\noindent\textbf{Feedback:}\ }
+\def\comment@alttex#1{\endgraf\noindent\textbf{Comments:}\ }
+\def\@emph#1{\textcolor{emph}{\bf #1}}
+
+% Multiple choice
+\newenvironment{multiplechoice}[1][defaults]%
+    {\begingroup
+     %
+     % Sub-command definitions
+     \def\correct{\endgraf\@emph{$\bullet$}\ }
+     \let\feedback\feedback@alttex
+     \let\comment@alttex\comment
+     \newenvironment{choices}[0]{\itemize}{\enditemize}
+     %
+     % Question title 
+     \endgraf
+     \noindent \textbf{Multiple choice question} (\texttt{#1})\\}%
+    {\endgroup}
+
+%. True and false
+\def\showchoice@truefalse#1#2{\endgraf %
+  \begin{tabular}{|c|c|} %
+  \hline #1 & #2 \\ \hline %
+  \end{tabular}~ }
+
+\DeclareDocumentCommand{\tchoice@truefalse}{O{T} O{F}}{%
+    \showchoice@truefalse{\@emph{#1}}{{#2}} }
+  
+\DeclareDocumentCommand{\fchoice@truefalse}{O{T} O{F}}{\endgraf %
+    \showchoice@truefalse{{#1}}{\@emph{#2}} }
+
+\DeclareDocumentCommand{\choice@truefalse}{O{T} O{F} m}{\endgraf %
+    \showchoice@truefalse{{#1}}{{#2}}(\texttt{#3})~ }
+    
+\newenvironment{truefalse}[1][defaults]%
+    {\begingroup
+     %
+     %. Sub-command definitions
+     \let\tchoice\tchoice@truefalse
+     \let\fchoice\fchoice@truefalse
+     \let\choice\choice@truefalse
+     \let\feedback\feedback@alttex
+     \let\comment@alttex\comment
+     %
+     %. Question title 
+     \endgraf\bigskip
+     \noindent \textbf{Multiple True/False questions} (\texttt{#1})\\}%
+    {\endgroup}
+
+\newcommand{\from@assoc}[1][{\color{red}none}]{\endgraf $\bullet$ \textbf{\texttt{#1}:} }
+\newcommand{\goesto@assoc}[1][{\color{red}none}]{\endgraf {\color{gray} $\bullet$ :: } \texttt{#1} {\color{gray} $\Rightarrow$ }}
+\newenvironment{association}[1][defaults]%
+    {\begingroup
+     %
+     % Sub-command definitions
+     \let\from\from@assoc
+     \let\goesto\goesto@assoc
+     \let\feedback\feedback@alttex
+     \let\comment@alttex\comment
+     %
+     % Question title 
+     \endgraf\bigskip
+     \noindent \textbf{Association of items} (\texttt{#1})\\}%
+    {\endgroup}
+
+\newenvironment{openanswer}[1][defaults]%
+    {\begingroup
+     %
+     % Sub-command definitions
+     \let\answer\answer@alttex
+     \let\feedback\feedback@alttex
+     \let\comment@alttex\comment
+     %
+     % Question title 
+     \endgraf\bigskip
+     \noindent \textbf{Open answer} (\texttt{#1})\\}%
+    {\endgroup}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                          Step 3: JINJA2 templates
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% TODO: organize description
+% Aliases for Jinja2 markup. These are defined as empty verb-like commands and
+% just output interrogation marks in the PDF output. However, they can be 
+% translated by the Jinja templating engine and used to generate a templete for
+% creating LaTeX files.
+% 
+% Jinja templates are mostly used when one wants to separate Python code from 
+% LaTeX presentation. Jinja template expressions may also be used in order to
+% automate the creation of certain documents with repetitive structures.
+%
+% Think of Jinja as a kind of pre-processor.
+%
+% Variable blocks: A variable input block can be defined as \VAR{foo|bar}. 
+% This prints the value of the variable "foo" processed with the "bar" filter.  
+%\newcommand{\VAR}[1]{\texttt{#1}}
+
+% Command blocks: Can run loops, conditionals and other commands. The example
+% bellow shows a simple loop that print the first 10 numbers
+%
+%               \CMD{for i in range(10)}\VAR{i + 1}, \CMD{endfor}
+%\newcommand{\CMD}[1]{??}
+
+% Comment blocks: Can put anything that shall not be passed to the LaTeX 
+% processor
+%\newcommand{\COMMENT}[1]{}
+
+% Line commands: Jinja also accepts the following syntax
+%
+%   %- for i in range(10)
+%   Hello \VAR{i}
+%   %- endfor
+%   %! This is a template comment line, and shall not appear in the final
+%   %! rendered document
+%
+% No special command needs to be defined since it is interpreted by LaTeX
+% as a comment.
+
+% Data block: Optionally, Jinja variables may be initialized by some source of
+% data source. It can be, for example, a Python script or a JSON data structure.
+% A file with the same name (but the appropriate extension) of the TeX source
+% suffices to define a data source. One can override this behavior using the
+% \DATASOURCE[data type]{<filename>} command.
+% Optionally, the content of this script or data file can be included verbatim 
+% inside the DATA environment.
+%\newcommand{\DATASOURCE}[2][none]{}
+%\newenvironment{DATA}[2][opt]{\begingroup}{\endgroup}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       Step 4: Commands substitutions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+% type of questions environments
+%\ifplastex
+%\else
+%\newenvironment{multiplechoice}[1][]{\begingroup}{\endgroup}
+%\newenvironment{truefalse}[1][]{\begingroup}{\endgroup}
+%\newenvironment{association}[1][]{\begingroup}{\endgroup}
+%\newenvironment{introtext}[1][]{\begingroup}{\endgroup}
+%\newenvironment{openanswer}[1][]{\begingroup}{\endgroup}
+%\newenvironment{items}{\enumerate}{\endenumerate}
+%\fi
+
+% Empty commands
+%\ifplastex
+%\else
+%\newcommand{\solution}[1]{\textbf{Solução}\\ {\color{blue} {#1}}}
+%\newcommand{\feedback}[1]{\par{\color{red}\textbf{Feedback:} {#1}}}
+%
+%\def\comment#1{}
+%\def\grade#1{}
+%\def\answer#1{}
+%\def\associatewith#1{~$\rightarrow$~ #1}
+%\def\emptyassociation{}
+%\def\answerinput#1{}
+%\def\sp{ }
+%\fi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       Step 5: Consolidate multiple files
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                             Step 6: Tex execution
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       Step 7: Insertion of python code
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                  Step 8: Re-execute TeX until no changes occur
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                  Step 9: Move back outputs to callee's folder
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% One different file is created for each section in the \ALT commands.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                  Pygments definitions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\PY@reset{\let\PY@it=\relax \let\PY@bf=\relax%
+    \let\PY@ul=\relax \let\PY@tc=\relax%
+    \let\PY@bc=\relax \let\PY@ff=\relax}
+\def\PY@tok#1{\csname PY@tok@#1\endcsname}
+\def\PY@toks#1+{\ifx\relax#1\empty\else%
+    \PY@tok{#1}\expandafter\PY@toks\fi}
+\def\PY@do#1{\PY@bc{\PY@tc{\PY@ul{%
+    \PY@it{\PY@bf{\PY@ff{#1}}}}}}}
+\def\PY#1#2{\PY@reset\PY@toks#1+\relax+\PY@do{#2}}
+
+\expandafter\def\csname PY@tok@nn\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@bp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@sc\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@vi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@s\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@sr\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.53}{##1}}}
+\expandafter\def\csname PY@tok@sd\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@kn\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@sh\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@mi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@m\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@s1\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@c1\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@si\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.53}{##1}}}
+\expandafter\def\csname PY@tok@k\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@gi\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.63,0.00}{##1}}}
+\expandafter\def\csname PY@tok@ow\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.67,0.13,1.00}{##1}}}
+\expandafter\def\csname PY@tok@err\endcsname{\def\PY@bc##1{\setlength{\fboxsep}{0pt}\fcolorbox[rgb]{1.00,0.00,0.00}{1,1,1}{\strut ##1}}}
+\expandafter\def\csname PY@tok@kp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@cp\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.74,0.48,0.00}{##1}}}
+\expandafter\def\csname PY@tok@no\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.53,0.00,0.00}{##1}}}
+\expandafter\def\csname PY@tok@mf\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@kr\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@nf\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@mo\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@gt\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.27,0.87}{##1}}}
+\expandafter\def\csname PY@tok@nt\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@kc\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@cs\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@gp\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,0.50}{##1}}}
+\expandafter\def\csname PY@tok@go\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.53,0.53,0.53}{##1}}}
+\expandafter\def\csname PY@tok@s2\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@nv\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@se\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.13}{##1}}}
+\expandafter\def\csname PY@tok@gr\endcsname{\def\PY@tc##1{\textcolor[rgb]{1.00,0.00,0.00}{##1}}}
+\expandafter\def\csname PY@tok@ss\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@gs\endcsname{\let\PY@bf=\textbf}
+\expandafter\def\csname PY@tok@sx\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@nl\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.63,0.63,0.00}{##1}}}
+\expandafter\def\csname PY@tok@sb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+\expandafter\def\csname PY@tok@gu\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.50,0.00,0.50}{##1}}}
+\expandafter\def\csname PY@tok@mh\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@nb\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@il\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@vc\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@kt\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.69,0.00,0.25}{##1}}}
+\expandafter\def\csname PY@tok@nd\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.67,0.13,1.00}{##1}}}
+\expandafter\def\csname PY@tok@w\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.73,0.73,0.73}{##1}}}
+\expandafter\def\csname PY@tok@c\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@ni\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.60,0.60,0.60}{##1}}}
+\expandafter\def\csname PY@tok@nc\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,1.00}{##1}}}
+\expandafter\def\csname PY@tok@o\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.40,0.40,0.40}{##1}}}
+\expandafter\def\csname PY@tok@na\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.49,0.56,0.16}{##1}}}
+\expandafter\def\csname PY@tok@gh\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.00,0.50}{##1}}}
+\expandafter\def\csname PY@tok@kd\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
+\expandafter\def\csname PY@tok@vg\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.10,0.09,0.49}{##1}}}
+\expandafter\def\csname PY@tok@gd\endcsname{\def\PY@tc##1{\textcolor[rgb]{0.63,0.00,0.00}{##1}}}
+\expandafter\def\csname PY@tok@cm\endcsname{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.25,0.50,0.50}{##1}}}
+\expandafter\def\csname PY@tok@ge\endcsname{\let\PY@it=\textit}
+\expandafter\def\csname PY@tok@ne\endcsname{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.82,0.25,0.23}{##1}}}
+
+\def\PYZbs{\char`\\}
+\def\PYZus{\char`\_}
+\def\PYZob{\char`\{}
+\def\PYZcb{\char`\}}
+\def\PYZca{\char`\^}
+\def\PYZam{\char`\&}
+\def\PYZlt{\char`\<}
+\def\PYZgt{\char`\>}
+\def\PYZsh{\char`\#}
+\def\PYZpc{\char`\%}
+\def\PYZdl{\char`\$}
+\def\PYZhy{\char`\-}
+\def\PYZsq{\char`\'}
+\def\PYZdq{\char`\"}
+\def\PYZti{\char`\~}
+% for compatibility with earlier versions
+\def\PYZat{@}
+\def\PYZlb{[}
+\def\PYZrb{]}
+

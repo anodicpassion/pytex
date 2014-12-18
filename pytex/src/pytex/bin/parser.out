@@ -1,0 +1,640 @@
+Created by PLY version 3.4 (http://www.dabeaz.com/ply)
+
+Grammar
+
+Rule 0     S' -> final
+Rule 1     final -> expr FLUSH filters
+Rule 2     final -> expr
+Rule 3     filters -> filters FLUSH func
+Rule 4     filters -> filters FLUSH NAME
+Rule 5     filters -> func
+Rule 6     filters -> NAME
+Rule 7     expr -> expr PLUS term
+Rule 8     expr -> expr MINUS term
+Rule 9     expr -> term
+Rule 10    term -> term TIMES factor
+Rule 11    term -> term DIVIDE factor
+Rule 12    term -> factor
+Rule 13    term -> func
+Rule 14    func -> NAME LPAREN args RPAREN
+Rule 15    args -> args COMMA expr
+Rule 16    args -> expr
+Rule 17    factor -> NUMBER
+Rule 18    factor -> NAME
+Rule 19    factor -> fat
+Rule 20    factor -> func
+Rule 21    fat -> factor EXCLAMATION
+Rule 22    fat -> LPAREN expr RPAREN EXCLAMATION
+
+Terminals, with rules where they appear
+
+COMMA                : 15
+DIVIDE               : 11
+EXCLAMATION          : 21 22
+FLUSH                : 1 3 4
+LPAREN               : 14 22
+MINUS                : 8
+NAME                 : 4 6 14 18
+NUMBER               : 17
+PLUS                 : 7
+RPAREN               : 14 22
+TIMES                : 10
+error                : 
+
+Nonterminals, with rules where they appear
+
+args                 : 14 15
+expr                 : 1 2 7 8 15 16 22
+factor               : 10 11 12 21
+fat                  : 19
+filters              : 1 3 4
+final                : 0
+func                 : 3 5 13 20
+term                 : 7 8 9 10 11
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . final
+    (1) final -> . expr FLUSH filters
+    (2) final -> . expr
+    (7) expr -> . expr PLUS term
+    (8) expr -> . expr MINUS term
+    (9) expr -> . term
+    (10) term -> . term TIMES factor
+    (11) term -> . term DIVIDE factor
+    (12) term -> . factor
+    (13) term -> . func
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (14) func -> . NAME LPAREN args RPAREN
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    term                           shift and go to state 1
+    fat                            shift and go to state 8
+    final                          shift and go to state 9
+    func                           shift and go to state 4
+    factor                         shift and go to state 5
+    expr                           shift and go to state 2
+
+state 1
+
+    (9) expr -> term .
+    (10) term -> term . TIMES factor
+    (11) term -> term . DIVIDE factor
+
+    RPAREN          reduce using rule 9 (expr -> term .)
+    PLUS            reduce using rule 9 (expr -> term .)
+    MINUS           reduce using rule 9 (expr -> term .)
+    FLUSH           reduce using rule 9 (expr -> term .)
+    $end            reduce using rule 9 (expr -> term .)
+    COMMA           reduce using rule 9 (expr -> term .)
+    TIMES           shift and go to state 10
+    DIVIDE          shift and go to state 11
+
+
+state 2
+
+    (1) final -> expr . FLUSH filters
+    (2) final -> expr .
+    (7) expr -> expr . PLUS term
+    (8) expr -> expr . MINUS term
+
+    FLUSH           shift and go to state 13
+    $end            reduce using rule 2 (final -> expr .)
+    PLUS            shift and go to state 14
+    MINUS           shift and go to state 12
+
+
+state 3
+
+    (22) fat -> LPAREN . expr RPAREN EXCLAMATION
+    (7) expr -> . expr PLUS term
+    (8) expr -> . expr MINUS term
+    (9) expr -> . term
+    (10) term -> . term TIMES factor
+    (11) term -> . term DIVIDE factor
+    (12) term -> . factor
+    (13) term -> . func
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (14) func -> . NAME LPAREN args RPAREN
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    term                           shift and go to state 1
+    fat                            shift and go to state 8
+    func                           shift and go to state 4
+    factor                         shift and go to state 5
+    expr                           shift and go to state 15
+
+state 4
+
+    (13) term -> func .
+    (20) factor -> func .
+
+  ! reduce/reduce conflict for TIMES resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for DIVIDE resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for FLUSH resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for PLUS resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for MINUS resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for $end resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for RPAREN resolved using rule 13 (term -> func .)
+  ! reduce/reduce conflict for COMMA resolved using rule 13 (term -> func .)
+    TIMES           reduce using rule 13 (term -> func .)
+    DIVIDE          reduce using rule 13 (term -> func .)
+    FLUSH           reduce using rule 13 (term -> func .)
+    PLUS            reduce using rule 13 (term -> func .)
+    MINUS           reduce using rule 13 (term -> func .)
+    $end            reduce using rule 13 (term -> func .)
+    RPAREN          reduce using rule 13 (term -> func .)
+    COMMA           reduce using rule 13 (term -> func .)
+    EXCLAMATION     reduce using rule 20 (factor -> func .)
+
+  ! TIMES           [ reduce using rule 20 (factor -> func .) ]
+  ! DIVIDE          [ reduce using rule 20 (factor -> func .) ]
+  ! FLUSH           [ reduce using rule 20 (factor -> func .) ]
+  ! PLUS            [ reduce using rule 20 (factor -> func .) ]
+  ! MINUS           [ reduce using rule 20 (factor -> func .) ]
+  ! $end            [ reduce using rule 20 (factor -> func .) ]
+  ! RPAREN          [ reduce using rule 20 (factor -> func .) ]
+  ! COMMA           [ reduce using rule 20 (factor -> func .) ]
+
+
+state 5
+
+    (12) term -> factor .
+    (21) fat -> factor . EXCLAMATION
+
+    TIMES           reduce using rule 12 (term -> factor .)
+    DIVIDE          reduce using rule 12 (term -> factor .)
+    FLUSH           reduce using rule 12 (term -> factor .)
+    PLUS            reduce using rule 12 (term -> factor .)
+    MINUS           reduce using rule 12 (term -> factor .)
+    $end            reduce using rule 12 (term -> factor .)
+    RPAREN          reduce using rule 12 (term -> factor .)
+    COMMA           reduce using rule 12 (term -> factor .)
+    EXCLAMATION     shift and go to state 16
+
+
+state 6
+
+    (18) factor -> NAME .
+    (14) func -> NAME . LPAREN args RPAREN
+
+    EXCLAMATION     reduce using rule 18 (factor -> NAME .)
+    TIMES           reduce using rule 18 (factor -> NAME .)
+    DIVIDE          reduce using rule 18 (factor -> NAME .)
+    FLUSH           reduce using rule 18 (factor -> NAME .)
+    PLUS            reduce using rule 18 (factor -> NAME .)
+    MINUS           reduce using rule 18 (factor -> NAME .)
+    $end            reduce using rule 18 (factor -> NAME .)
+    RPAREN          reduce using rule 18 (factor -> NAME .)
+    COMMA           reduce using rule 18 (factor -> NAME .)
+    LPAREN          shift and go to state 17
+
+
+state 7
+
+    (17) factor -> NUMBER .
+
+    EXCLAMATION     reduce using rule 17 (factor -> NUMBER .)
+    TIMES           reduce using rule 17 (factor -> NUMBER .)
+    DIVIDE          reduce using rule 17 (factor -> NUMBER .)
+    FLUSH           reduce using rule 17 (factor -> NUMBER .)
+    PLUS            reduce using rule 17 (factor -> NUMBER .)
+    MINUS           reduce using rule 17 (factor -> NUMBER .)
+    $end            reduce using rule 17 (factor -> NUMBER .)
+    RPAREN          reduce using rule 17 (factor -> NUMBER .)
+    COMMA           reduce using rule 17 (factor -> NUMBER .)
+
+
+state 8
+
+    (19) factor -> fat .
+
+    EXCLAMATION     reduce using rule 19 (factor -> fat .)
+    TIMES           reduce using rule 19 (factor -> fat .)
+    DIVIDE          reduce using rule 19 (factor -> fat .)
+    FLUSH           reduce using rule 19 (factor -> fat .)
+    PLUS            reduce using rule 19 (factor -> fat .)
+    MINUS           reduce using rule 19 (factor -> fat .)
+    $end            reduce using rule 19 (factor -> fat .)
+    RPAREN          reduce using rule 19 (factor -> fat .)
+    COMMA           reduce using rule 19 (factor -> fat .)
+
+
+state 9
+
+    (0) S' -> final .
+
+
+
+state 10
+
+    (10) term -> term TIMES . factor
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+    (14) func -> . NAME LPAREN args RPAREN
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    fat                            shift and go to state 8
+    func                           shift and go to state 19
+    factor                         shift and go to state 18
+
+state 11
+
+    (11) term -> term DIVIDE . factor
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+    (14) func -> . NAME LPAREN args RPAREN
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    fat                            shift and go to state 8
+    func                           shift and go to state 19
+    factor                         shift and go to state 20
+
+state 12
+
+    (8) expr -> expr MINUS . term
+    (10) term -> . term TIMES factor
+    (11) term -> . term DIVIDE factor
+    (12) term -> . factor
+    (13) term -> . func
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (14) func -> . NAME LPAREN args RPAREN
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    term                           shift and go to state 21
+    fat                            shift and go to state 8
+    func                           shift and go to state 4
+    factor                         shift and go to state 5
+
+state 13
+
+    (1) final -> expr FLUSH . filters
+    (3) filters -> . filters FLUSH func
+    (4) filters -> . filters FLUSH NAME
+    (5) filters -> . func
+    (6) filters -> . NAME
+    (14) func -> . NAME LPAREN args RPAREN
+
+    NAME            shift and go to state 23
+
+    func                           shift and go to state 24
+    filters                        shift and go to state 22
+
+state 14
+
+    (7) expr -> expr PLUS . term
+    (10) term -> . term TIMES factor
+    (11) term -> . term DIVIDE factor
+    (12) term -> . factor
+    (13) term -> . func
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (14) func -> . NAME LPAREN args RPAREN
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    term                           shift and go to state 25
+    fat                            shift and go to state 8
+    func                           shift and go to state 4
+    factor                         shift and go to state 5
+
+state 15
+
+    (22) fat -> LPAREN expr . RPAREN EXCLAMATION
+    (7) expr -> expr . PLUS term
+    (8) expr -> expr . MINUS term
+
+    RPAREN          shift and go to state 26
+    PLUS            shift and go to state 14
+    MINUS           shift and go to state 12
+
+
+state 16
+
+    (21) fat -> factor EXCLAMATION .
+
+    EXCLAMATION     reduce using rule 21 (fat -> factor EXCLAMATION .)
+    TIMES           reduce using rule 21 (fat -> factor EXCLAMATION .)
+    DIVIDE          reduce using rule 21 (fat -> factor EXCLAMATION .)
+    FLUSH           reduce using rule 21 (fat -> factor EXCLAMATION .)
+    PLUS            reduce using rule 21 (fat -> factor EXCLAMATION .)
+    MINUS           reduce using rule 21 (fat -> factor EXCLAMATION .)
+    $end            reduce using rule 21 (fat -> factor EXCLAMATION .)
+    RPAREN          reduce using rule 21 (fat -> factor EXCLAMATION .)
+    COMMA           reduce using rule 21 (fat -> factor EXCLAMATION .)
+
+
+state 17
+
+    (14) func -> NAME LPAREN . args RPAREN
+    (15) args -> . args COMMA expr
+    (16) args -> . expr
+    (7) expr -> . expr PLUS term
+    (8) expr -> . expr MINUS term
+    (9) expr -> . term
+    (10) term -> . term TIMES factor
+    (11) term -> . term DIVIDE factor
+    (12) term -> . factor
+    (13) term -> . func
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (14) func -> . NAME LPAREN args RPAREN
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    term                           shift and go to state 1
+    args                           shift and go to state 27
+    fat                            shift and go to state 8
+    func                           shift and go to state 4
+    factor                         shift and go to state 5
+    expr                           shift and go to state 28
+
+state 18
+
+    (10) term -> term TIMES factor .
+    (21) fat -> factor . EXCLAMATION
+
+    TIMES           reduce using rule 10 (term -> term TIMES factor .)
+    DIVIDE          reduce using rule 10 (term -> term TIMES factor .)
+    FLUSH           reduce using rule 10 (term -> term TIMES factor .)
+    PLUS            reduce using rule 10 (term -> term TIMES factor .)
+    MINUS           reduce using rule 10 (term -> term TIMES factor .)
+    $end            reduce using rule 10 (term -> term TIMES factor .)
+    RPAREN          reduce using rule 10 (term -> term TIMES factor .)
+    COMMA           reduce using rule 10 (term -> term TIMES factor .)
+    EXCLAMATION     shift and go to state 16
+
+
+state 19
+
+    (20) factor -> func .
+
+    EXCLAMATION     reduce using rule 20 (factor -> func .)
+    TIMES           reduce using rule 20 (factor -> func .)
+    DIVIDE          reduce using rule 20 (factor -> func .)
+    FLUSH           reduce using rule 20 (factor -> func .)
+    PLUS            reduce using rule 20 (factor -> func .)
+    MINUS           reduce using rule 20 (factor -> func .)
+    $end            reduce using rule 20 (factor -> func .)
+    RPAREN          reduce using rule 20 (factor -> func .)
+    COMMA           reduce using rule 20 (factor -> func .)
+
+
+state 20
+
+    (11) term -> term DIVIDE factor .
+    (21) fat -> factor . EXCLAMATION
+
+    TIMES           reduce using rule 11 (term -> term DIVIDE factor .)
+    DIVIDE          reduce using rule 11 (term -> term DIVIDE factor .)
+    FLUSH           reduce using rule 11 (term -> term DIVIDE factor .)
+    PLUS            reduce using rule 11 (term -> term DIVIDE factor .)
+    MINUS           reduce using rule 11 (term -> term DIVIDE factor .)
+    $end            reduce using rule 11 (term -> term DIVIDE factor .)
+    RPAREN          reduce using rule 11 (term -> term DIVIDE factor .)
+    COMMA           reduce using rule 11 (term -> term DIVIDE factor .)
+    EXCLAMATION     shift and go to state 16
+
+
+state 21
+
+    (8) expr -> expr MINUS term .
+    (10) term -> term . TIMES factor
+    (11) term -> term . DIVIDE factor
+
+    RPAREN          reduce using rule 8 (expr -> expr MINUS term .)
+    PLUS            reduce using rule 8 (expr -> expr MINUS term .)
+    MINUS           reduce using rule 8 (expr -> expr MINUS term .)
+    FLUSH           reduce using rule 8 (expr -> expr MINUS term .)
+    $end            reduce using rule 8 (expr -> expr MINUS term .)
+    COMMA           reduce using rule 8 (expr -> expr MINUS term .)
+    TIMES           shift and go to state 10
+    DIVIDE          shift and go to state 11
+
+
+state 22
+
+    (1) final -> expr FLUSH filters .
+    (3) filters -> filters . FLUSH func
+    (4) filters -> filters . FLUSH NAME
+
+    $end            reduce using rule 1 (final -> expr FLUSH filters .)
+    FLUSH           shift and go to state 29
+
+
+state 23
+
+    (6) filters -> NAME .
+    (14) func -> NAME . LPAREN args RPAREN
+
+    FLUSH           reduce using rule 6 (filters -> NAME .)
+    $end            reduce using rule 6 (filters -> NAME .)
+    LPAREN          shift and go to state 17
+
+
+state 24
+
+    (5) filters -> func .
+
+    FLUSH           reduce using rule 5 (filters -> func .)
+    $end            reduce using rule 5 (filters -> func .)
+
+
+state 25
+
+    (7) expr -> expr PLUS term .
+    (10) term -> term . TIMES factor
+    (11) term -> term . DIVIDE factor
+
+    RPAREN          reduce using rule 7 (expr -> expr PLUS term .)
+    PLUS            reduce using rule 7 (expr -> expr PLUS term .)
+    MINUS           reduce using rule 7 (expr -> expr PLUS term .)
+    FLUSH           reduce using rule 7 (expr -> expr PLUS term .)
+    $end            reduce using rule 7 (expr -> expr PLUS term .)
+    COMMA           reduce using rule 7 (expr -> expr PLUS term .)
+    TIMES           shift and go to state 10
+    DIVIDE          shift and go to state 11
+
+
+state 26
+
+    (22) fat -> LPAREN expr RPAREN . EXCLAMATION
+
+    EXCLAMATION     shift and go to state 30
+
+
+state 27
+
+    (14) func -> NAME LPAREN args . RPAREN
+    (15) args -> args . COMMA expr
+
+    RPAREN          shift and go to state 32
+    COMMA           shift and go to state 31
+
+
+state 28
+
+    (16) args -> expr .
+    (7) expr -> expr . PLUS term
+    (8) expr -> expr . MINUS term
+
+    RPAREN          reduce using rule 16 (args -> expr .)
+    COMMA           reduce using rule 16 (args -> expr .)
+    PLUS            shift and go to state 14
+    MINUS           shift and go to state 12
+
+
+state 29
+
+    (3) filters -> filters FLUSH . func
+    (4) filters -> filters FLUSH . NAME
+    (14) func -> . NAME LPAREN args RPAREN
+
+    NAME            shift and go to state 33
+
+    func                           shift and go to state 34
+
+state 30
+
+    (22) fat -> LPAREN expr RPAREN EXCLAMATION .
+
+    EXCLAMATION     reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    TIMES           reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    DIVIDE          reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    FLUSH           reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    PLUS            reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    MINUS           reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    $end            reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    RPAREN          reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+    COMMA           reduce using rule 22 (fat -> LPAREN expr RPAREN EXCLAMATION .)
+
+
+state 31
+
+    (15) args -> args COMMA . expr
+    (7) expr -> . expr PLUS term
+    (8) expr -> . expr MINUS term
+    (9) expr -> . term
+    (10) term -> . term TIMES factor
+    (11) term -> . term DIVIDE factor
+    (12) term -> . factor
+    (13) term -> . func
+    (17) factor -> . NUMBER
+    (18) factor -> . NAME
+    (19) factor -> . fat
+    (20) factor -> . func
+    (14) func -> . NAME LPAREN args RPAREN
+    (21) fat -> . factor EXCLAMATION
+    (22) fat -> . LPAREN expr RPAREN EXCLAMATION
+
+    NUMBER          shift and go to state 7
+    NAME            shift and go to state 6
+    LPAREN          shift and go to state 3
+
+    term                           shift and go to state 1
+    fat                            shift and go to state 8
+    func                           shift and go to state 4
+    factor                         shift and go to state 5
+    expr                           shift and go to state 35
+
+state 32
+
+    (14) func -> NAME LPAREN args RPAREN .
+
+    FLUSH           reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    $end            reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    TIMES           reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    DIVIDE          reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    RPAREN          reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    PLUS            reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    MINUS           reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    EXCLAMATION     reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+    COMMA           reduce using rule 14 (func -> NAME LPAREN args RPAREN .)
+
+
+state 33
+
+    (4) filters -> filters FLUSH NAME .
+    (14) func -> NAME . LPAREN args RPAREN
+
+    FLUSH           reduce using rule 4 (filters -> filters FLUSH NAME .)
+    $end            reduce using rule 4 (filters -> filters FLUSH NAME .)
+    LPAREN          shift and go to state 17
+
+
+state 34
+
+    (3) filters -> filters FLUSH func .
+
+    FLUSH           reduce using rule 3 (filters -> filters FLUSH func .)
+    $end            reduce using rule 3 (filters -> filters FLUSH func .)
+
+
+state 35
+
+    (15) args -> args COMMA expr .
+    (7) expr -> expr . PLUS term
+    (8) expr -> expr . MINUS term
+
+    RPAREN          reduce using rule 15 (args -> args COMMA expr .)
+    COMMA           reduce using rule 15 (args -> args COMMA expr .)
+    PLUS            shift and go to state 14
+    MINUS           shift and go to state 12
+
+WARNING: 
+WARNING: Conflicts:
+WARNING: 
+WARNING: reduce/reduce conflict in state 4 resolved using rule (term -> func)
+WARNING: rejected rule (factor -> func) in state 4

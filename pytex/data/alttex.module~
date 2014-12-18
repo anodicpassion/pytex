@@ -1,0 +1,159 @@
+#\DeclareLyXModule[alttex.sty]{Alttex}
+#DescriptionBegin
+#Creates alternative versions of a document from a single source.
+#DescriptionEnd
+
+Format 49
+
+AddToPreamble     
+    \usepackage{alttex}
+EndPreamble
+
+#
+# Basic commands
+#
+InsetLayout "Flex:Alternatives"
+    LyXType                 custom
+    LabelString             alt
+    LatexType               Command
+    LatexName               alt
+    Argument 1
+        LabelString	        sec
+        Mandatory	        false
+    EndArgument
+    
+    Decoration              Classic
+    BgColor                 white
+End
+
+InsetLayout "Flex:Special: altif"
+    LyXType                 custom
+    LabelString             altif
+    LatexType               Command
+    LatexName               altif
+    Argument 1
+        LabelString	        sec
+        Mandatory	        true
+        AutoInsert          true
+    EndArgument
+    
+    Argument 2
+        LabelString	        else
+        Mandatory	        true
+        DefaultArg         ""
+    EndArgument
+
+    Decoration              Classic
+    BgColor                 white
+End
+
+
+InsetLayout "Flex:Variable"
+    LyXType                 custom
+    LabelString             var
+    LatexType               Command
+    LatexName               var
+    
+    Decoration              Classic
+    BgColor                 white
+End
+
+InsetLayout "Flex:Variables (Executable)"
+    LyXType                 custom
+    LabelString             "Variables (Executable)"
+    LatexType               Environment
+    LatexName               variables-exec
+    
+    Argument 1
+        LabelString	        lang
+        Tooltip             "Programming Language"
+        DefaultArg          python
+        Mandatory	        true
+        AutoInsert          true
+    EndArgument
+    
+    NextNoIndent	        true
+    ParbreakIsNewline       true
+    FreeSpacing             true
+    PassThru		        true
+    KeepEmpty	            true
+    NewLine		            false
+
+    Decoration              classic
+    SpellCheck              false
+    Align		            Block
+    AlignPossible	        Block
+    BgColor                 green
+    
+    # Define fonts
+    Font
+        Size                small
+        Family              typewriter
+    EndFont
+    
+    LabelFont
+        Size                Small
+        Family	            Typewriter
+    EndFont
+End
+
+InsetLayout "Flex:Code Block"
+    CopyStyle               "Flex:Variables (Executable)"
+    LabelString             "Executable Code"
+    LatexName               exec
+End
+
+
+Style Shuffle
+	Category                MainText
+	Margin                  Static
+	LatexType               Environment
+	LatexName               shuffle
+	LabelString             Shuffle
+	LabelType               Centered
+	LabelFont
+	    Family              Typewriter
+	EndFont
+	
+	ItemSep                 0
+	TopSep                  1
+	BottomSep               1
+	Align                   Block
+	AlignPossible           Block, Left, Right, Center
+	EndLabelType            Box
+End
+
+################################################################################
+#                                   Question types
+################################################################################
+
+Style "List of Choices"
+	CopyStyle               Itemize
+	LatexName               choices
+End
+
+InsetLayout "Flex:Multiple Choice Question"
+    LyXType                 custom
+    LabelString             "Multiple Choice Question"
+    LatexType               Environment
+    LatexName               multiplechoice
+    Argument 1
+        Tooltip 	        Options
+        LabelString         opts
+        Mandatory	        false
+    EndArgument
+ 
+    Decoration              classic
+    SpellCheck              true
+    MultiPar                true
+    Align		            Block
+    AlignPossible	        Block
+    BgColor                 white
+    
+    # Define fonts    
+    LabelFont
+        Size                Small
+        Family	            Typewriter
+    EndFont
+End
+
