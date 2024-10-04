@@ -160,7 +160,7 @@ second is just a small convenience that helps code look clean and tidy.
 '''
 
 import sys
-from collections import MutableMapping
+from collections.abc import MutableMapping # MutableMapping was added to collections.abc in version 3.5 https://docs.python.org/3/library/collections.abc.html#collections.abc.MutableMapping
 from types import MethodType
 import itertools
 
